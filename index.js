@@ -546,7 +546,7 @@ let executeAsync = function (fn, repeatTest = 0, args = []) {
 let runHook = function (hookFn, origFn, before, after, repeatTest = 0) {
     const hookError = (hookName) => (e) => console.error(`Error in ${hookName}: ${e.stack}`)
 
-    return origFn(function () {
+    return origFn(function (...hookArgs) {
         // Print errors encountered in beforeHook and afterHook to console, but
         // don't propagate them to avoid failing the test. However, errors in
         // framework hook functions should fail the test, so propagate those.
@@ -555,10 +555,10 @@ let runHook = function (hookFn, origFn, before, after, repeatTest = 0) {
              * user wants handle async command using promises, no need to wrap in fiber context
              */
             if (isAsync() || hookFn.name === 'async') {
-                return executeAsync.call(this, hookFn, repeatTest)
+                return executeAsync.call(this, hookFn, repeatTest, hookArgs)
             }
 
-            return new Promise(runSync.call(this, hookFn, repeatTest))
+            return new Promise(runSync.call(this, hookFn, repeatTest, hookArgs))
         }).then(() => {
             return executeHooksWithArgs(after).catch(hookError('afterHook'))
         })
@@ -578,22 +578,22 @@ let runSpec = function (specTitle, specFn, origFn, repeatTest = 0) {
      * user wants handle async command using promises, no need to wrap in fiber context
      */
     if (isAsync() || specFn.name === 'async') {
-        return origFn(specTitle, function async () {
-            return executeAsync.call(this, specFn, repeatTest)
+        return origFn(specTitle, function async (...specArgs) {
+            return executeAsync.call(this, specFn, repeatTest, specArgs)
         })
     }
 
-    return origFn(specTitle, function () {
-        return new Promise(runSync.call(this, specFn, repeatTest))
+    return origFn(specTitle, function (...specArgs) {
+        return new Promise(runSync.call(this, specFn, repeatTest, specArgs))
     })
 }
 
 /**
  * run hook or spec via executeSync
  */
-function runSync (fn, repeatTest = 0) {
+function runSync (fn, repeatTest = 0, args = []) {
     return (resolve, reject) =>
-        Fiber(() => executeSync.call(this, fn, repeatTest).then(() => resolve(), reject)).run()
+        Fiber(() => executeSync.call(this, fn, repeatTest, args).then(() => resolve(), reject)).run()
 }
 
 /**
@@ -620,7 +620,7 @@ let wrapTestFunction = function (fnName, origFn, testInterfaceFnNames, before, a
             /**
              * if specFn is undefined we are dealing with a pending function
              */
-            return origFn(specTitle)
+            return origFn(...specArguments)
         }
 
         return runHook(specFn, origFn, before, after, retryCnt)
