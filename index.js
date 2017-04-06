@@ -629,20 +629,21 @@ let wrapTestFunction = function (fnName, origFn, testInterfaceFnNames, before, a
 
 /**
  * [runInFiberContext description]
- * @param  {[type]} testInterfaceFnNames  global command that runs specs
+ * @param  {[type]} testInterfaceFnNames  context command that runs specs
  * @param  {[type]} before               before hook hook
  * @param  {[type]} after                after hook hook
  * @param  {[type]} fnName               test interface command to wrap
+ * @param  {[type]} context              the context to run command from, defaults to global
  */
-let runInFiberContext = function (testInterfaceFnNames, before, after, fnName) {
-    let origFn = global[fnName]
-    global[fnName] = wrapTestFunction(fnName, origFn, testInterfaceFnNames, before, after)
+let runInFiberContext = function (testInterfaceFnNames, before, after, fnName, context = global) {
+    let origFn = context[fnName]
+    context[fnName] = wrapTestFunction(fnName, origFn, testInterfaceFnNames, before, after)
 
     /**
      * support it.skip for the Mocha framework
      */
     if (typeof origFn.skip === 'function') {
-        global[fnName].skip = origFn.skip
+        context[fnName].skip = origFn.skip
     }
 
     /**
@@ -650,7 +651,7 @@ let runInFiberContext = function (testInterfaceFnNames, before, after, fnName) {
      */
     if (typeof origFn.only === 'function') {
         let origOnlyFn = origFn.only
-        global[fnName].only = wrapTestFunction(fnName + '.only', origOnlyFn, testInterfaceFnNames, before, after)
+        context[fnName].only = wrapTestFunction(fnName + '.only', origOnlyFn, testInterfaceFnNames, before, after)
     }
 }
 
